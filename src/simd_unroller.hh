@@ -1,8 +1,7 @@
 #include <immintrin.h>
 #include <iostream>
 
-template<typename IN_T, typename OUT_T, typename INVEC_T, typename OUTVEC_T, 
-         class FUNC, class LOAD, class STORE, class REDUCER>
+template<typename IN_T, typename OUT_T, typename INVEC_T, typename OUTVEC_T, class FUNC>
 inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
     constexpr unsigned int lane_sz = sizeof(INVEC_T) / sizeof(IN_T);
 
@@ -20,15 +19,15 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
         for(unsigned int i = 0; i < n; ++i)
             xa[i] = x[i];
         
-        INVEC_T xx = LOAD::func(xa);
-        OUTVEC_T yy = LOAD::func(ya);
+        INVEC_T xx = FUNC::load(xa);
+        OUTVEC_T yy = FUNC::load(ya);
         FUNC::func(xx, yy);
-        STORE::func(yy, ya);
+        FUNC::store(yy, ya);
  
         for(unsigned int i = 0; i < n; ++i)
             y[i] = ya[i];
  
-        REDUCER::func(yy, y);
+        FUNC::reduce(yy, y);
         return;
    }
 #endif
@@ -42,17 +41,17 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
         OUTVEC_T yy1, yy2, yy3;
 
         while(i + 4*lane_sz - 1 < n) {
-            xx = LOAD::func(x + i);
-            yy = LOAD::func(y + i);
+            xx = FUNC::load(x + i);
+            yy = FUNC::load(y + i);
             i += lane_sz;
-            xx1 = LOAD::func(x + i);
-            yy1 = LOAD::func(y + i);
+            xx1 = FUNC::load(x + i);
+            yy1 = FUNC::load(y + i);
             i += lane_sz;
-            xx2 = LOAD::func(x + i);
-            yy2 = LOAD::func(y + i);
+            xx2 = FUNC::load(x + i);
+            yy2 = FUNC::load(y + i);
             i += lane_sz;
-            xx3 = LOAD::func(x + i);
-            yy3 = LOAD::func(y + i);
+            xx3 = FUNC::load(x + i);
+            yy3 = FUNC::load(y + i);
             i -= 3*lane_sz;
 
             FUNC::func(xx, yy);
@@ -60,24 +59,24 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
             FUNC::func(xx2, yy2);
             FUNC::func(xx3, yy3);
 
-            STORE::func(yy, y + i);
+            FUNC::store(yy, y + i);
             i += lane_sz;
-            STORE::func(yy1, y + i);
+            FUNC::store(yy1, y + i);
             i += lane_sz;
-            STORE::func(yy2, y + i);
+            FUNC::store(yy2, y + i);
             i += lane_sz;
-            STORE::func(yy3, y + i);
+            FUNC::store(yy3, y + i);
             i += lane_sz;
         }
 
-        REDUCER::func(yy3, yy2, yy1, yy);
+        FUNC::reduce(yy3, yy2, yy1, yy);
     }
 
     while (i+lane_sz-1 < n) {
-        xx = LOAD::func(x + i);
-        yy = LOAD::func(y + i);
+        xx = FUNC::load(x + i);
+        yy = FUNC::load(y + i);
         FUNC::func(xx, yy);
-        STORE::func(yy, y + i);
+        FUNC::store(yy, y + i);
         i += lane_sz;
     }
 
@@ -86,20 +85,20 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
 // but if we don't it's less clean.
 #ifdef __AVX512F__
     if(i != n) {
-        xx = LOAD::maskfunc(x + i, n-i);
-        yy = LOAD::maskfunc(y + i, n-i);
+        xx = FUNC::maskload(x + i, n-i);
+        yy = FUNC::maskload(y + i, n-i);
         FUNC::maskfunc(xx, n-i, yy);
-        STORE::maskfunc(yy, n-i, y + i);
+        FUNC::maskstore(yy, n-i, y + i);
     }
 
-    REDUCER::func(yy, y);
+    FUNC::reduce(yy, y);
 #else
-    if(i != n && (!REDUCER::is_valid())) {
+    if(i != n && (!FUNC::reduce_is_valid())) {
         i = n - lane_sz;
-        xx = LOAD::func(x + i);
-        yy = LOAD::func(y + i);
+        xx = FUNC::load(x + i);
+        yy = FUNC::load(y + i);
         FUNC::func(xx, yy);
-        STORE::func(yy, y + i);
+        FUNC::store(yy, y + i);
     } else if (i != n) {
         // todo: reducing is broken in this path, and i'm not sure what to do.
         
