@@ -15,44 +15,38 @@ struct doubleit {
         unsigned char mask = 0xFF << size;
         y = _mm512_maskz_add_pd(~mask, x, x);
     }
-};
 
-struct load {
-    static __m512d func(double*from) {
+    static __m512d load(double*from) {
         return _mm512_loadu_pd(from);
     }
 
-    static __m512d maskfunc(double*from, const unsigned int size) {
+    static __m512d maskload(double*from, const unsigned int size) {
         unsigned char mask = 0xFF << size;
         return _mm512_maskz_loadu_pd(~mask, from);
     }
-};
 
-
-struct store {
-    static void func(__m512d x, double*to) {
+    static void store(__m512d x, double*to) {
         _mm512_storeu_pd(to, x);
     }
 
-    static void maskfunc(__m512d x, const unsigned int size, double*to) {
+    static void maskstore(__m512d x, const unsigned int size, double*to) {
         unsigned char mask = 0xFF << size;
         return _mm512_mask_storeu_pd(to, ~mask, x);
     }
-};
 
-struct reduce {
-    constexpr static bool is_valid() {
+    constexpr static bool reduce_is_valid() {
         return false;
     }
 
-    static void func(__m512d x, double*to) {
+    static void reduce(__m512d x, double*to) {
         
     }
 
-    static void func(__m512d x0, __m512d x1, __m512d x2, __m512d& y) {
+    static void reduce(__m512d x0, __m512d x1, __m512d x2, __m512d& y) {
         
     }
 };
+
 
 
 int main() {
@@ -63,8 +57,7 @@ int main() {
     for (int i = 0; i < n; ++i)
         x[i] = (double)i;
 
-    unroller<double, double, __m512d, __m512d, 
-             doubleit, load, store, reduce>(x, y, n);
+    unroller<double, double, __m512d, __m512d, doubleit>(x, y, n);
 
     auto index = rand() % n;
     std::cout << index << "*2 = " << y[index] << std::endl;
