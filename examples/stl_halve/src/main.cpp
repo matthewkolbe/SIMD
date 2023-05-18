@@ -25,7 +25,7 @@ struct stl_halve {
     }
 
     static void maskfunc(stdx::native_simd<double> x, const unsigned int size, stdx::native_simd<double> & y) {
-        // i don't know
+        // i don't know how to mask with this library
     }
 
     static auto load(double*from) {
@@ -34,7 +34,7 @@ struct stl_halve {
     }
 
     static auto maskload(double*from, const unsigned int size) {
-        // i don't know
+        // i don't know how to mask with this library
         stdx::native_simd<double> r(from, stdx::element_aligned);
         return r;
     }
@@ -44,7 +44,7 @@ struct stl_halve {
     }
 
     static void maskstore(stdx::native_simd<double> x, const unsigned int size, double*to) {
-        // i don't know
+        // i don't know how to mask with this library
     }
 
     constexpr static bool reduce_is_valid() {
