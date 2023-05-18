@@ -26,17 +26,17 @@ struct min_finder {
         return _mm512_maskz_loadu_pd(~mask, from);
     }
 
-    static void store(__m512d x, double*to) {
+    static void store(__m512d x, double* to) {
     }
 
-    static void maskstore(__m512d x, const unsigned int size, double*to) {
+    static void maskstore(__m512d x, const unsigned int size, double* to) {
     }
 
     constexpr static bool reduce_is_valid() {
         return true;
     }
 
-    static void reduce(__m512d x, double*to) {
+    static void reduce(__m512d x, double* to) {
         (*to) = _mm512_reduce_min_pd(x);
     }
 
@@ -46,7 +46,7 @@ struct min_finder {
         y = _mm512_min_pd(x0, x2);
     }
 
-    static __m512d reduce_init() {
+    constexpr static __m512d reduce_init() {
         return _mm512_set1_pd(std::numeric_limits<double>::max());
     }
 };
