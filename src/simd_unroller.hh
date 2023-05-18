@@ -34,24 +34,30 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
 
     INVEC_T xx;
     OUTVEC_T yy;
+
+    if(FUNC::reduce_is_valid())
+        yy = FUNC::reduce_init();
+
     unsigned int i = 0;
 
     if(n > 4*lane_sz) {
         INVEC_T xx1, xx2, xx3;
         OUTVEC_T yy1, yy2, yy3;
 
+        if(FUNC::reduce_is_valid()) {
+            yy1 = FUNC::reduce_init();
+            yy2 = FUNC::reduce_init();
+            yy3 = FUNC::reduce_init();
+        }
+
         while(i + 4*lane_sz - 1 < n) {
             xx = FUNC::load(x + i);
-            yy = FUNC::load(y + i);
             i += lane_sz;
             xx1 = FUNC::load(x + i);
-            yy1 = FUNC::load(y + i);
             i += lane_sz;
             xx2 = FUNC::load(x + i);
-            yy2 = FUNC::load(y + i);
             i += lane_sz;
             xx3 = FUNC::load(x + i);
-            yy3 = FUNC::load(y + i);
             i -= 3*lane_sz;
 
             FUNC::func(xx, yy);
@@ -74,7 +80,6 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
 
     while (i+lane_sz-1 < n) {
         xx = FUNC::load(x + i);
-        yy = FUNC::load(y + i);
         FUNC::func(xx, yy);
         FUNC::store(yy, y + i);
         i += lane_sz;
@@ -86,7 +91,6 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
 #ifdef __AVX512F__
     if(i != n) {
         xx = FUNC::maskload(x + i, n-i);
-        yy = FUNC::maskload(y + i, n-i);
         FUNC::maskfunc(xx, n-i, yy);
         FUNC::maskstore(yy, n-i, y + i);
     }
@@ -96,7 +100,6 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
     if(i != n && (!FUNC::reduce_is_valid())) {
         i = n - lane_sz;
         xx = FUNC::load(x + i);
-        yy = FUNC::load(y + i);
         FUNC::func(xx, yy);
         FUNC::store(yy, y + i);
     } else if (i != n) {
