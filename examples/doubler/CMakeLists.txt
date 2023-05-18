@@ -5,6 +5,7 @@ set(CMAKE_CXX_COMPILER clang++)
 project ("doubler")
 
 add_compile_options(
+  -std=c++20
   -Qunused-arguments
   -O3
   -march=native
