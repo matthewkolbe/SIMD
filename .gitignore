@@ -47,3 +47,4 @@ _deps
 examples/doubler/build/
 examples/min_finder/build/
 examples/agner_exp/build/
+examples/stl_halve/build/
