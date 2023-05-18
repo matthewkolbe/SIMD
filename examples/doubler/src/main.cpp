@@ -45,6 +45,10 @@ struct doubleit {
     static void reduce(__m512d x0, __m512d x1, __m512d x2, __m512d& y) {
         
     }
+
+    static __m512d reduce_init() {
+        return _mm512_set1_pd(0.0);
+    }
 };
 
 
