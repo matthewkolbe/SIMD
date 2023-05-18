@@ -35,7 +35,7 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
     INVEC_T xx;
     OUTVEC_T yy;
 
-    if(FUNC::reduce_is_valid())
+    if constexpr(FUNC::reduce_is_valid())
         yy = FUNC::reduce_init();
 
     unsigned int i = 0;
@@ -44,7 +44,7 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
         INVEC_T xx1, xx2, xx3;
         OUTVEC_T yy1, yy2, yy3;
 
-        if(FUNC::reduce_is_valid()) {
+        if constexpr(FUNC::reduce_is_valid()) {
             yy1 = FUNC::reduce_init();
             yy2 = FUNC::reduce_init();
             yy3 = FUNC::reduce_init();
