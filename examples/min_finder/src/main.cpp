@@ -6,8 +6,16 @@
 
 #include"../../../src/simd_unroller.hh"
 
-
 struct min_finder {
+
+    static auto x_init() {
+        return _mm512_set1_pd(0.0); 
+    }
+
+    static auto y_init() {
+        return _mm512_set1_pd(std::numeric_limits<double>::max());
+    }
+
     static void func(__m512d x, __m512d & y) {
         y = _mm512_min_pd(x, y);
     }
@@ -45,10 +53,6 @@ struct min_finder {
         x2 = _mm512_min_pd(x2, y);
         y = _mm512_min_pd(x0, x2);
     }
-
-    constexpr static __m512d reduce_init() {
-        return _mm512_set1_pd(std::numeric_limits<double>::max());
-    }
 };
 
 
@@ -61,7 +65,7 @@ int main() {
     for (int i = 0; i < n; ++i)
         x[i] = (rand() % N);
 
-    unroller<double, double, __m512d, __m512d, min_finder>(x, &y, n);
+    unroller<min_finder>(x, &y, n);
 
     std::cout << y << std::endl;
 }

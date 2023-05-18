@@ -10,6 +10,16 @@
 
 
 struct agner_exp {
+    static auto x_init() {
+        Vec8d r{0.0};
+        return r;
+    }
+
+    static auto y_init() {
+        Vec8d r{0.0};
+        return r;
+    }
+
     static void func(Vec8d x, Vec8d & y) {
         y = exp(x);
     }
@@ -18,12 +28,12 @@ struct agner_exp {
         y = exp(x);
     }
 
-    static Vec8d load(double*from) {
+    static auto load(double*from) {
         Vec8d r;
         return r.load(from);
     }
 
-    static Vec8d maskload(double*from, const unsigned int size) {
+    static auto maskload(double*from, const unsigned int size) {
         Vec8d r;
         return r.load_partial(size, from);
     }
@@ -45,11 +55,6 @@ struct agner_exp {
 
     static void reduce(Vec8d x0, Vec8d x1, Vec8d x2, Vec8d& y) {
     }
-
-    static Vec8d reduce_init() {
-        Vec8d r{0.0};
-        return r;
-    }
 };
 
 
@@ -59,9 +64,9 @@ int main() {
     double x[N];
     double y[N];
     for (int i = 0; i < N; ++i)
-        x[i] = i / 1000.0;
+        x[i] = i / 2000.0;
 
-    unroller<double, double, Vec8d, Vec8d, agner_exp>(x, y, N);
+    unroller<agner_exp>(x, y, N);
 
     auto idx = rand() % N;
     std::cout << "e^" << x[idx] << " = " << y[idx] << std::endl;

@@ -2,11 +2,20 @@
 #include <immintrin.h>
 #include <stdlib.h>
 #include <iostream>
+#include <type_traits>
 
 #include"../../../src/simd_unroller.hh"
 
-
 struct doubleit {
+
+    static auto x_init() {
+        return _mm512_set1_pd(0.0); 
+    }
+
+    static auto y_init() {
+        return _mm512_set1_pd(0.0);
+    }
+
     static void func(__m512d x, __m512d & y) {
         y = _mm512_add_pd(x, x);
     }
@@ -16,7 +25,7 @@ struct doubleit {
         y = _mm512_maskz_add_pd(~mask, x, x);
     }
 
-    static __m512d load(double*from) {
+    static auto load(double*from) {
         return _mm512_loadu_pd(from);
     }
 
@@ -45,10 +54,6 @@ struct doubleit {
     static void reduce(__m512d x0, __m512d x1, __m512d x2, __m512d& y) {
         
     }
-
-    static __m512d reduce_init() {
-        return _mm512_set1_pd(0.0);
-    }
 };
 
 
@@ -61,7 +66,7 @@ int main() {
     for (int i = 0; i < n; ++i)
         x[i] = (double)i;
 
-    unroller<double, double, __m512d, __m512d, doubleit>(x, y, n);
+    unroller<doubleit>(x, y, n);
 
     auto index = rand() % n;
     std::cout << index << "*2 = " << y[index] << std::endl;
