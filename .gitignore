@@ -45,3 +45,4 @@ _deps
 
 /.vscode
 examples/doubler/build/
+examples/min_finder/build/
