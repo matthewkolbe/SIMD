@@ -1,6 +1,3 @@
-#include <immintrin.h>
-#include <iostream>
-
 
 template<class FUNC, typename IN_T, typename OUT_T>
 inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
@@ -99,7 +96,8 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
         FUNC::func(xx, yy);
         FUNC::store(yy, y + i);
     } else if (i != n) {
-        // todo: reducing is broken in this path, and i'm not sure what to do.
+        // todo: reducing is broken in this path, and i'm not sure what to do. masking seems
+        // essential to cleaning up the end of an array for reduce operations.
         
     }
 #endif
