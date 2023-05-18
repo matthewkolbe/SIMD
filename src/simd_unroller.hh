@@ -1,11 +1,12 @@
 #include <immintrin.h>
 #include <iostream>
 
-template<typename IN_T, typename OUT_T, typename INVEC_T, typename OUTVEC_T, class FUNC>
-inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
-    constexpr unsigned int lane_sz = sizeof(INVEC_T) / sizeof(IN_T);
 
-#ifdef __AVX512F__
+template<class FUNC, typename IN_T, typename OUT_T>
+inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
+    constexpr unsigned int lane_sz = sizeof(FUNC::x_init()) / sizeof(IN_T);
+
+#ifndef __AVX512F__
 // entering this section of code is sometimes destructive to performance, and
 // sometimes not. this is used when the input size of the data you're operating 
 // on is less than the size of the SIMD register and when masked load/store isn't
@@ -19,8 +20,8 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
         for(unsigned int i = 0; i < n; ++i)
             xa[i] = x[i];
         
-        INVEC_T xx = FUNC::load(xa);
-        OUTVEC_T yy = FUNC::load(ya);
+        auto xx = FUNC::load(xa);
+        auto yy = FUNC::load(ya);
         FUNC::func(xx, yy);
         FUNC::store(yy, ya);
  
@@ -32,23 +33,18 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
    }
 #endif
 
-    INVEC_T xx;
-    OUTVEC_T yy;
-
-    if constexpr(FUNC::reduce_is_valid())
-        yy = FUNC::reduce_init();
+    auto xx = FUNC::x_init();
+    auto yy = FUNC::y_init();
 
     unsigned int i = 0;
 
     if(n > 4*lane_sz) {
-        INVEC_T xx1, xx2, xx3;
-        OUTVEC_T yy1, yy2, yy3;
-
-        if constexpr(FUNC::reduce_is_valid()) {
-            yy1 = FUNC::reduce_init();
-            yy2 = FUNC::reduce_init();
-            yy3 = FUNC::reduce_init();
-        }
+        auto xx1 = FUNC::x_init();
+        auto yy1 = FUNC::y_init();
+        auto xx2 = FUNC::x_init();
+        auto yy2 = FUNC::y_init();
+        auto xx3 = FUNC::x_init();
+        auto yy3 = FUNC::y_init();
 
         while(i + 4*lane_sz - 1 < n) {
             xx = FUNC::load(x + i);
