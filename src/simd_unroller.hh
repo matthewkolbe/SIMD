@@ -1,6 +1,9 @@
 
+
+
+
 template<class FUNC, typename IN_T, typename OUT_T>
-inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
+inline void unroller(IN_T x, OUT_T y, const unsigned int n) {
     constexpr unsigned int lane_sz = sizeof(FUNC::x_init()) / sizeof(IN_T);
 
 #ifndef __AVX512F__
@@ -44,13 +47,13 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
         auto yy3 = FUNC::y_init();
 
         while(i + 4*lane_sz - 1 < n) {
-            xx = FUNC::load(x + i);
+            xx = FUNC::load(x, i);
             i += lane_sz;
-            xx1 = FUNC::load(x + i);
+            xx1 = FUNC::load(x, i);
             i += lane_sz;
-            xx2 = FUNC::load(x + i);
+            xx2 = FUNC::load(x, i);
             i += lane_sz;
-            xx3 = FUNC::load(x + i);
+            xx3 = FUNC::load(x, i);
             i -= 3*lane_sz;
 
             FUNC::func(xx, yy);
@@ -58,13 +61,13 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
             FUNC::func(xx2, yy2);
             FUNC::func(xx3, yy3);
 
-            FUNC::store(yy, y + i);
+            FUNC::store(yy, i, y);
             i += lane_sz;
-            FUNC::store(yy1, y + i);
+            FUNC::store(yy1, i, y);
             i += lane_sz;
-            FUNC::store(yy2, y + i);
+            FUNC::store(yy2, i, y);
             i += lane_sz;
-            FUNC::store(yy3, y + i);
+            FUNC::store(yy3, i, y);
             i += lane_sz;
         }
 
@@ -72,9 +75,9 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
     }
 
     while (i+lane_sz-1 < n) {
-        xx = FUNC::load(x + i);
+        xx = FUNC::load(x, i);
         FUNC::func(xx, yy);
-        FUNC::store(yy, y + i);
+        FUNC::store(yy, i, y);
         i += lane_sz;
     }
 
@@ -83,22 +86,18 @@ inline void unroller(IN_T* x, OUT_T* y, const unsigned int n) {
 // but if we don't it's less clean.
 #ifdef __AVX512F__
     if(i != n) {
-        xx = FUNC::maskload(x + i, n-i);
+        xx = FUNC::maskload(x, i, n-i);
         FUNC::maskfunc(xx, n-i, yy);
-        FUNC::maskstore(yy, n-i, y + i);
+        FUNC::maskstore(yy, n-i, i, y);
     }
 
     FUNC::reduce(yy, y);
 #else
-    if(i != n && (!FUNC::reduce_is_valid())) {
+    if(i != n) {
         i = n - lane_sz;
-        xx = FUNC::load(x + i);
+        xx = FUNC::load(x, i);
         FUNC::func(xx, yy);
-        FUNC::store(yy, y + i);
-    } else if (i != n) {
-        // todo: reducing is broken in this path, and i'm not sure what to do. masking seems
-        // essential to cleaning up the end of an array for reduce operations.
-        
-    }
+        FUNC::store(yy, i, y);
+    } 
 #endif
 }

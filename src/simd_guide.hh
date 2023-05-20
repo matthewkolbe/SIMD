@@ -1,19 +1,28 @@
 #include <vector>
 #include <iostream>
 
+// bad asm example for conditional assigns
+// https://godbolt.org/z/orbbE9abM
 
 template<class T> 
 class simd {
-    friend class simd<bool>;
-    friend class simd<double>;
-    friend class simd<float>;
-    friend class simd<int>;
-    friend class simd<char>;
-    friend class simd_array<bool>;
-    friend class simd_array<double>;
-    friend class simd_array<float>;
-    friend class simd_array<int>;
-    friend class simd_array<char>;
+    template<class U>
+    friend class simd;
+
+    template<class U>
+    friend class simd_array;
+
+    friend T;
+    // friend class simd<bool>;
+    // friend class simd<double>;
+    // friend class simd<float>;
+    // friend class simd<int>;
+    // friend class simd<char>;
+    // friend class simd_array<bool>;
+    // friend class simd_array<double>;
+    // friend class simd_array<float>;
+    // friend class simd_array<int>;
+    // friend class simd_array<char>;
 
     T m_value;
 
@@ -38,6 +47,18 @@ public:
 
     constexpr simd<T> operator+=(const simd<T>& a) {
         m_value += a.m_value;
+        return *this;  }
+
+    constexpr simd<T> operator|=(const simd<T>& a) {
+        m_value |= a.m_value;
+        return *this;  }
+    
+    constexpr simd<T> operator&=(const simd<T>& a) {
+        m_value &= a.m_value;
+        return *this;  }
+
+    constexpr simd<T> operator++() {
+        m_value++;;
         return *this;  }
 
     simd<bool> operator==(const simd<T>& a) {
@@ -73,6 +94,14 @@ public:
         return r;
     }
 
+    template<typename F>
+    constexpr simd<T> ifsimd(const simd<T>& if_eq, const simd<T>& if_neq, F && condition) {
+        simd<T> r = if_eq;
+        if(!condition().m_value)
+            r = if_neq;
+        return r;
+    }
+
     constexpr void ifeq(const simd<T>& condition, const simd<T>& if_eq) {
         ifsimd(*this == condition, if_eq);
     }
@@ -90,20 +119,26 @@ public:
     }
 
     template<typename F>
-    static void repeat(simd<int> to, F && inner) {
+    #ifdef __clang__
+    #elif  __GNUC__
+        __attribute__((optimize("-funroll-loops")))
+        __attribute__((optimize("-fno-math-errno")))
+    #endif
+    static void repeat(simd<int> from, simd<int> to, F && inner) {
         #ifdef __clang__
             #pragma clang loop vectorize(enable)
         #elif __GNUC__
             #pragma GCC ivdep
         #endif
-        for(int i = 0; i < to.m_value; ++i)
+        for(int i = from.m_value; i < to.m_value; ++i)
             inner(i);
     }
 };
 
+
 template<class T> 
 class simd_array {
-    simd<T>* m_values;
+    simd<T>* __restrict m_values;
     simd<int> m_size;
 public:
     simd_array<T>(const T * seed, int n): m_size(n) {
@@ -130,10 +165,15 @@ public:
 
     simd<int> get_length() { return m_size; }
 
-    simd<T> operator [](int i) const    {return m_values[i];}
+    constexpr simd<T> operator [](int i) const    {return m_values[i];}
     simd<T> & operator [](int i) {return m_values[i];}
-    simd<T>& at(int i ) {return m_values[i];}
+    constexpr simd<T>& at(int i ) {return m_values[i];}
     simd<T>& at(simd<int> i ) {return m_values[i.m_value];}
+
+    template<typename F>
+    void repeat(F && inner) {
+        repeat(0, m_size, inner);
+    }
 
     template<typename F>
     void repeat(simd<int> to, F && inner) {
@@ -141,6 +181,11 @@ public:
     }
 
     template<typename F>
+    #ifdef __clang__
+    #elif  __GNUC__
+        __attribute__((optimize("-funroll-loops")))
+        __attribute__((optimize("-fno-math-errno")))
+    #endif
     void repeat(simd<int> from, simd<int> to, F && inner) {
         #ifdef __clang__
             #pragma clang loop vectorize(enable)
@@ -204,18 +249,22 @@ public:
         m_a.ifgt(v.m_a, lighter);
     }
 
+    // static void brighten_if_darker_than(simd<rgba> & me, const simd<rgba> & v, const simd<int> & lightener) {
+    //     auto lighter = me.m_a - lightener;
+
+    //     me.m_a.ifgt(v.m_a, lighter);
+    // }
+
     // vectorizes at the 4x class level
     static void brighten_if_darker_than_vector(std::vector<rgba> & pixels, const rgba & v, const simd<int> & lightener) {
         for(auto& pixel: pixels)
             pixel.brighten_if_darker_than(v, lightener);
     }
 
-    static void brighten_if_darker_than_vector(rgba* pixels, int n, const rgba & v, const simd<int> & lightener) {
-        simd<int>::repeat(n, [&](int i) {
-            pixels[i].brighten_if_darker_than(v, lightener);
+    static void brighten_if_darker_than_vector(simd_array<rgba>& pixels, int n, const rgba & v, const simd<int> & lightener) {
+        simd<int>::repeat(0, n, [&](int i) {
+            pixels[i].m_value.brighten_if_darker_than(v, lightener);
         });
-        //for(int i = 0; i < n; ++i)
-        //    pixels[i].brighten_if_darker_than(v, lightener);
     }
 };
 
@@ -249,32 +298,40 @@ class substrfind {
     simd<int> end{0};
 public:
     substrfind(int n) {
-        m_vec = simd_array<char> (n);
+        m_vec = simd_array<char>(n);
     }
 
     void insert(simd_array<char>& v) {
-        for(int i = end; i < end + insert.length(); ++i)
-            m_vec[i] = insert[i - end];
-        end += insert.length();
-        m_vec[end] = '/n';
-        end++;
+        m_vec.repeat(end, end+v.get_length(), [&](simd<int> i, simd<char>& val){
+            val = v.at(i-end);
+        });
+        end += v.get_length();
+        m_vec.at(end) = '/n';
+        ++end;
     }
 
-    int find_substr(simd_array<char> & sub) {
-        simd<char>::repeat(end - sub.get_length(), [&](int i){
+    simd<int> find_substr(simd_array<char> & sub) {
+        simd<int> r{-1};
+        m_vec.repeat(end - sub.get_length(), [&](simd<int> i, simd<char>& val){
+            simd<bool> eq{false};
+            sub.repeat([&](simd<int> i_inner, simd<char>& val_inner) {
+                eq |= (val_inner == m_vec.at(i + i_inner));
+            });
 
+            r.ifeq(r, i);
         });
+        return r;
     }
     
 };
 
 
 int main() {
-    rgba pixels[10000];
+    simd_array<rgba> pixels(10000);
     rgba v(100, 100, 100, 100);
     simd<int> light(100);
     for(int i = 0; i < 10000; ++i)
-        pixels[i].set_all(i%256, i%256, i%256, i%256);
+        pixels[i] = simd<rgba>({i%256, i%256, i%256, i%256});
 
     rgba::brighten_if_darker_than_vector(pixels, 10000, v, light);
     //rgba::zero_if_equal_vector(pixels, 10000, v);
