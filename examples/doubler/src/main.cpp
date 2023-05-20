@@ -4,71 +4,75 @@
 #include <iostream>
 #include <type_traits>
 
-#include"../../../src/simd_unroller.hh"
+#include "../../../src/simd_unroller.hh"
+#include "../../../src/intrinsic_generator.hh"
 
+template<typename T, int SZ>
 struct doubleit {
 
     static auto x_init() {
-        return _mm512_set1_pd(0.0); 
+        return vec_set1<T, SZ>()(0.0); 
     }
 
     static auto y_init() {
-        return _mm512_set1_pd(0.0);
+        return vec_set1<T, SZ>()(0.0); 
     }
 
-    static void func(__m512d x, __m512d & y) {
-        y = _mm512_add_pd(x, x);
+    template<typename VEC_T>
+    static void func(VEC_T x, VEC_T & y) {
+        y = vec_add<T, SZ>()(x, x);
     }
 
-    static void maskfunc(__m512d x, const unsigned int size, __m512d & y) {
-        unsigned char mask = 0xFF << size;
-        y = _mm512_maskz_add_pd(~mask, x, x);
+    template<typename VEC_T>
+    static void maskfunc(VEC_T x, const unsigned int size, VEC_T & y) {
+        __mmask8 mask = vec_full_mask<T, SZ>()()  << size;
+        y = vec_maskz_add<T, SZ>()(x, x, ~mask);
     }
 
-    static auto load(double*from) {
-        return _mm512_loadu_pd(from);
+    static auto load(T*from, int i) {
+        return vec_loadu<T, SZ>()(from + i);
+    }
+    
+    static auto maskload(T*from, int i, const unsigned int size) {
+        auto mask = vec_full_mask<T, SZ>()() << size;
+        return vec_maskz_loadu<T, SZ>()(from + i, ~mask);
     }
 
-    static __m512d maskload(double*from, const unsigned int size) {
-        unsigned char mask = 0xFF << size;
-        return _mm512_maskz_loadu_pd(~mask, from);
+    template<typename VEC_T>
+    static void store(VEC_T& x, int i, T*to) {
+        vec_storeu<T, SZ>()(to + i, x);
     }
 
-    static void store(__m512d x, double*to) {
-        _mm512_storeu_pd(to, x);
+    template<typename VEC_T>
+    static void maskstore(VEC_T x, const unsigned int size, int i, T*to) {
+        __mmask8 mask = vec_full_mask<T, SZ>()() << size;
+        vec_mask_storeu<T, SZ>()(to + i, x, ~mask);
     }
 
-    static void maskstore(__m512d x, const unsigned int size, double*to) {
-        unsigned char mask = 0xFF << size;
-        return _mm512_mask_storeu_pd(to, ~mask, x);
-    }
-
-    constexpr static bool reduce_is_valid() {
-        return false;
-    }
-
-    static void reduce(__m512d x, double*to) {
+    template<typename VEC_T>
+    static void reduce(VEC_T x, T*to) {
         
     }
 
-    static void reduce(__m512d x0, __m512d x1, __m512d x2, __m512d& y) {
+    template<typename VEC_T>
+    static void reduce(VEC_T x0, VEC_T x1, VEC_T x2, VEC_T& y) {
         
     }
 };
 
-
+using NUMBER_T = int;
+const int SIZE = 512;
 
 int main() {
-    const int N = 35128;
-    auto n = rand() % N;
-    double x[n];
-    double y[n];
-    for (int i = 0; i < n; ++i)
-        x[i] = (double)i;
+    const int N = 1<<16;
+    NUMBER_T x[N];
+    NUMBER_T y[N];
+    for (int i = 0; i < N; ++i)
+        x[i] = (NUMBER_T)i;
 
-    unroller<doubleit>(x, y, n);
+    unroller<doubleit<NUMBER_T, SIZE>>(x, y, N);
 
-    auto index = rand() % n;
+    auto index = rand() % N;
     std::cout << index << "*2 = " << y[index] << std::endl;
-    std::cout << n-1 << "*2 = " << y[n-1] << std::endl;
+    std::cout << N-1 << "*2 = " << y[N-1] << std::endl;
 }

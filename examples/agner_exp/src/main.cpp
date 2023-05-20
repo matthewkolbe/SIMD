@@ -46,10 +46,6 @@ struct agner_exp {
         x.store_partial(size, to);
     }
 
-    constexpr static bool reduce_is_valid() {
-        return false;
-    }
-
     static void reduce(Vec8d x, double*to) {
     }
 

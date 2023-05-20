@@ -27,5 +27,4 @@ FetchContent_MakeAvailable(vectorclass)
 
 include_directories(${vectorclass_SOURCE_DIR})
 
-
 add_executable(agnerexp ${SOURCES})

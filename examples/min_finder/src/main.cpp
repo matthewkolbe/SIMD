@@ -40,10 +40,6 @@ struct min_finder {
     static void maskstore(__m512d x, const unsigned int size, double* to) {
     }
 
-    constexpr static bool reduce_is_valid() {
-        return true;
-    }
-
     static void reduce(__m512d x, double* to) {
         (*to) = _mm512_reduce_min_pd(x);
     }

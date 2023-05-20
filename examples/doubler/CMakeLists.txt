@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.16)
 
-set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_CXX_COMPILER clang-16)
 
 project ("doubler")
 
@@ -14,6 +14,7 @@ add_compile_options(
 set(SOURCES
     src/main.cpp
     ../../src/simd_unroller.hh
+    ../../src/intrinsic_generator.hh
 )
 
 
