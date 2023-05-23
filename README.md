@@ -1,16 +1,10 @@
-# simd_unroller.hh
+## new SIMD library mockup
 
-`simd_unroller.hh` is a templated function that will automatically unroll and reorder SIMD operations repeated on an arbitrary length array. There are several usage examples of this. 
+The biggest problem I can tell with `std::simd` is that it's trying to be both a container and a wrapper around intrinsics, and it's ultimately not being very good at either. I propose instead to break apart the two. For the wrapper, we can encapsulate two different topics. We can simplify the function calls, and hide from the user the need to match the exact code they're writing to the architecture it will be built on. In `intrinsic_generator.hh`, I did these two things on a very limited scope of architectures and functionality.
 
+`simd_container.hh` contains a class called `simd_view`, which is currently my leading choice for how to apply the intrinsic wrapper functions. Within the `simd_view` class, there's a method called `process`.  This takes an instance of `UnrollerUnit` class. `UnrollerUnit` contains all of the information we need to apply a transformation of the data on arbitrary length arrays. `std_simd_proposed_unroller.hh` has a template template function called `unroller` that makes up for the problem that compilers don't optimize very well in the presence of intrinsics. The information contained in `UnrollerUnit` is everything `unroller` needs to efficiently apply intriniscs.  `UnrollerUnit` is a base class using the CRTP. It has default implementations, but some or all of these need to be overridden depending on the operation you want applied to the `simd_view`.
+
+
+## Examples
 - `doubler` doubles an input array `x` and assigns it to an output array `y`.
 - `min_finder` finds the minimum element of an array and returns its value.
-- `agner_exp` uses an external library (agner fog's vcl) to take the exponential of an input array `x` and assign the output to `y`.
-- `stl_halve` uses the STL's experimental simd library to halve values from an array `x` and assigns it to output `y`.
-
-This unroller lacks a lot. It currently accepts one arithmetic input array and maps it to one arithmetic output array, though the output array can either be interpreted as size N or size 1 (for reduce operations). This should be generalized to M inputs mapped to N outputs. 
-
-I also do not know how to abstract this away from the user. Maybe put inside a `simd_container` type where the user can call `process(lambda)`?
-
-### simd_guide.hh
-
-`simd_guide.hh` is an attempt to build something like Eduardo's SWAR library, where we restrict scalar code to SIMD-friendly operations, which should enable the compiler to autovectorize what we need. It's not working out as well as planned at the moment.

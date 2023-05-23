@@ -13,8 +13,9 @@ add_compile_options(
 
 set(SOURCES
     src/main.cpp
-    ../../src/simd_unroller.hh
+    ../../src/std_simd_proposed_unroller.hh
     ../../src/intrinsic_generator.hh
+    ../../src/simd_container.hh
 )
 
 add_executable(minfinder ${SOURCES})

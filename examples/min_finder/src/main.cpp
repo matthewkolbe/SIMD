@@ -4,64 +4,73 @@
 #include <iostream>
 #include <limits>
 
-#include"../../../src/simd_unroller.hh"
+#ifndef H_INTRINSIC_GENERATOR
+#include "../../../src/intrinsic_generator.hh"
+#define H_INTRINSIC_GENERATOR
+#endif
 
-struct min_finder {
+#ifndef H_SIMD_CONTAINER
+#include "../../../src/simd_container.hh"
+#define H_SIMD_CONTAINER
+#endif
 
-    static auto x_init() {
-        return _mm512_set1_pd(0.0); 
+template<typename T>
+struct min_finder  : UnrollerUnit<min_finder<T>, T>  {
+
+    inline auto y_init() {
+        return intr::set1<T>()(std::numeric_limits<T>::max());
     }
 
-    static auto y_init() {
-        return _mm512_set1_pd(std::numeric_limits<double>::max());
+    template<typename VEC_T>
+    inline void func(VEC_T x, VEC_T & y) {
+        y = intr::min<T>()(x, y);
     }
 
-    static void func(__m512d x, __m512d & y) {
-        y = _mm512_min_pd(x, y);
+    template<typename VEC_T>
+    inline void maskfunc(VEC_T x, const unsigned int size, VEC_T & y) {
+        auto mask = ~(intr::full_mask<T>()()  << size);
+        y = intr::mask_min<T>()(y, x, y, mask);
     }
 
-    static void maskfunc(__m512d x, const unsigned int size, __m512d & y) {
-        unsigned char mask = 0xFF << size;
-        y = _mm512_mask_min_pd(y, ~mask, x, y);
+    template<typename VEC_T>
+    inline auto store(T*to, VEC_T x) 
+    {
+
     }
 
-    static __m512d load(double*from) {
-        return _mm512_loadu_pd(from);
+    template<typename VEC_T>
+    inline auto maskstore(T*to, VEC_T x, unsigned int places) 
+    {
+
     }
 
-    static __m512d maskload(double*from, const unsigned int size) {
-        unsigned char mask = 0xFF << size;
-        return _mm512_maskz_loadu_pd(~mask, from);
+    template<typename VEC_T>
+    inline void reduce(VEC_T x, T* to) {
+        (*to) = intr::reduce_min<T>()(x);
     }
 
-    static void store(__m512d x, double* to) {
-    }
-
-    static void maskstore(__m512d x, const unsigned int size, double* to) {
-    }
-
-    static void reduce(__m512d x, double* to) {
-        (*to) = _mm512_reduce_min_pd(x);
-    }
-
-    static void reduce(__m512d x0, __m512d x1, __m512d x2, __m512d& y) {
-        x0 = _mm512_min_pd(x0, x1);
-        x2 = _mm512_min_pd(x2, y);
-        y = _mm512_min_pd(x0, x2);
+    template<typename VEC_T>
+    inline void reduce(VEC_T x0, VEC_T x1, VEC_T x2, VEC_T& y) {
+        x0 = intr::min<T>()(x0, x1);
+        x2 = intr::min<T>()(x2, y);
+        y = intr::min<T>()(x0, x2);
     }
 };
 
-
+using NUMBER_T = float;
 
 int main() {
-    const int N = 35128;
+    const int N = 15615;
     auto n = rand() % N;
-    double x[n];
-    double y = 0.0;
+    NUMBER_T x[n];
+    NUMBER_T y = 0.0;
     for (int i = 0; i < n; ++i)
-        x[i] = (rand() % N);
+        x[i] = (NUMBER_T)(rand() % N) + 2;
 
-    unroller<min_finder>(x, &y, n);
+    simd_view<NUMBER_T> view(x, n);
+    min_finder<NUMBER_T> m;
+
+    view.process(m, &y);
 
     std::cout << y << std::endl;
 }
