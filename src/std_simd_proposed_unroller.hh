@@ -95,7 +95,9 @@ struct UnrollerUnit
 
 
 template<class FUNC, typename IN_T, typename OUT_T>
-inline void unroller(FUNC& f, IN_T* x, OUT_T* y, const unsigned int n) {
+inline void unroller(FUNC& f, IN_T* x, OUT_T* y, const unsigned int n) 
+{
+
     constexpr unsigned int lane_sz = sizeof(f.x_init()) / sizeof(IN_T);
 
     auto xx = f.x_init();
@@ -128,11 +130,11 @@ inline void unroller(FUNC& f, IN_T* x, OUT_T* y, const unsigned int n) {
 
             f.store(y + i, yy);
             i += lane_sz;
-            f.store(y + i, yy);
+            f.store(y + i, yy1);
             i += lane_sz;
-            f.store(y + i, yy);
+            f.store(y + i, yy2);
             i += lane_sz;
-            f.store(y + i, yy);
+            f.store(y + i, yy3);
             i += lane_sz;
         }
 
@@ -159,12 +161,7 @@ inline void unroller(FUNC& f, IN_T* x, OUT_T* y, const unsigned int n) {
 
     f.reduce(yy, y);
 #else
-    // if(i != n) {
-    //     i = n - lane_sz;
-    //     xx = FUNC::load(x, i);
-    //     FUNC::func(xx, yy);
-    //     FUNC::store(yy, i, y);
-    // } 
+    throw;
 #endif
 }
 
